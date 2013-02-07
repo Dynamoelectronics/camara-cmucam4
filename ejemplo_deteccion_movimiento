@@ -1,0 +1,91 @@
+/***************************************************************************//**
+Ejemplo sobre uso de la CMUcam4 para toma de imagenes detectando movimiento 
+mayor información visita www.dynamoelectronics.com 
+
+*******************************************************************************/
+
+#include <CMUcam4.h>                        // se incluye la libreria
+#include <CMUcom4.h>                        // se incluye la libreria
+
+#define RED_TOLERANCE 30                   //  Asignación de tolerancia a color rojo
+#define GREEN_TOLERANCE 30                 //  Asignación de tolerancia a color green
+#define BLUE_TOLERANCE 30                  //  Asignación de tolerancia a color Blue
+
+#define LED_BLINK 2                         // definición del blink led rojo CMUcam 2 Hz
+#define LED_LISTO 5                         // definición del blink led rojo CMUcam 5 Hz
+#define TIEMPO_ESPERA 5000                  // Definición tiempo 5 seconds
+
+#define buzzer 9
+#define led_alarma 8
+
+CMUcam4 cam(CMUCOM4_SERIAL);                // Activación interfase serial 
+
+void setup()
+{
+  pinMode(buzzer,OUTPUT);                   // Defición de pin como salida 
+  pinMode(led_alarma,OUTPUT);               // Defición de pin como salida
+  cam.begin();                              // Inicialización de la camara       
+
+  // espera de auto ajuste
+
+  cam.LEDOn(LED_LISTO);                       // Led que indica camara lista
+  delay(TIEMPO_ESPERA);                       // tiempo de espera camara lista
+
+  cam.autoGainControl(false);                 // apaga el sistema de auto gain
+  cam.autoWhiteBalance(false);                // apaga el sistema de auto whitebalance
+
+  cam.LEDOn(CMUCAM4_LED_OFF);                  // led de la camara apagado
+}
+
+void loop()
+{
+  // Estructura de datos 
+  CMUcam4_statistics_data_t base;             // datos base 
+  CMUcam4_statistics_data_t sample;           // datos muestra 
+
+  // Start "getMean" mode streaming.
+  cam.getMean();                            // Obtener datos estadisticos de la imagen       
+
+  cam.getTypeSDataPacket(&base);            // captura de estadisticas imagen base 
+
+  do
+  {
+    cam.getTypeSDataPacket(&sample);        // Captura de datos continua imagen muestra 
+  }
+  while
+  (
+    // Se toman los datos de la media de cada color y se restan los datos base con los 
+    // datos muestra si el valor absoluto es mayor que la tolerancia se detectó movimiento
+   
+    (abs(base.RMean - sample.RMean) < RED_TOLERANCE) &&
+    (abs(base.GMean - sample.GMean) < GREEN_TOLERANCE) &&
+    (abs(base.BMean - sample.BMean) < BLUE_TOLERANCE)
+  );
+    // cuando se detectó movimiento se indica por medio de un buzzer o un led
+
+  digitalWrite(buzzer,HIGH);
+  digitalWrite(led_alarma,HIGH);
+  delay(500);
+  digitalWrite(buzzer,LOW);
+  digitalWrite(led_alarma,LOW);
+  delay(500);
+  digitalWrite(buzzer,HIGH);
+  digitalWrite(led_alarma,HIGH);
+  delay(500);
+  digitalWrite(buzzer,LOW);
+  digitalWrite(led_alarma,LOW);
+  delay(500);
+  
+  //si se requiere guardar en memoria SD la foto tomada es posible que requiera un retardo
+  /*
+  cam.idleCamera();              //detener la camara 
+  cam.LEDOn(LED_BLINK);
+  delay(TIEMPO_ESPERA);
+
+  // So take a picture.
+  cam.dumpFrame(CMUCAM4_HR_640, CMUCAM4_VR_480); // tomar la imagen resolución 640x480
+  cam.unmountDisk();                             // desmontar la imagen
+  */
+}
+
+
